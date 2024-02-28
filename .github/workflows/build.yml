@@ -7,8 +7,21 @@ on:
         required: true
         type: string
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          prerelease: true
+          commit: ${{ github.sha }}
+          tag: ${{ inputs.versionTag }}
+          name: ${{ inputs.versionTag }}
+          body: See https://github.com/eclipse/lemminx/blob/main/CHANGELOG.md for changelog.
+          token: ${{ secrets.GITHUB_TOKEN }}
   build-binary-unix:
     runs-on: ${{ matrix.os }}
+    needs: ['prepare']
     env:
       GRAALVM_DISTRO: graalvm
       GRAALVM_JAVA: 17
@@ -52,13 +65,20 @@ jobs:
         java-version: ${{env.GRAALVM_JAVA}}
     - run: ./mvnw -B package -Dnative -DskipTests $([ $(uname -s) = Linux ] && echo "-Dgraalvm.static=-H:+StaticExecutableWithDynamicLibC") -Dcbi.jarsigner.skip=true
     - run: mv org.eclipse.lemminx/target/lemminx-* lemminx-${{ matrix.label }}
-    - uses: actions/upload-artifact@v4
+    - name: Create Release
+      uses: ncipollo/release-action@v1.14.0
       with:
-        name: lemminx-${{ matrix.label }}
-        path: lemminx-${{ matrix.label }}
-        if-no-files-found: error
+        prerelease: true
+        allowUpdates: true
+        omitBodyDuringUpdate: true
+        artifactErrorsFailBuild: true
+        tag: ${{ inputs.versionTag }}
+        name: ${{ inputs.versionTag }}
+        artifacts: "lemminx-${{ matrix.label }}"
+        token: ${{ secrets.GITHUB_TOKEN }}
   build-binary-windows:
     runs-on: windows-latest
+    needs: ['prepare']
     env:
       GRAALVM_DISTRO: graalvm
       GRAALVM_JAVA: 17
@@ -86,15 +106,35 @@ jobs:
         key: ${{ runner.os }}-graalvm-*
         restore-keys: |
           ${{ runner.os }}-graalvm-
-    - uses: ilammy/msvc-dev-cmd@7315a94840631165970262a99c72cfb48a65d25d #v1.12.0
+    - uses: ilammy/msvc-dev-cmd@v1
     - uses: graalvm/setup-graalvm@a1b47fdf04e772fed6b3b46131e226f9aea5e169 #v1.1.6
       with:
         distribution: ${{env.GRAALVM_DISTRO}}
         java-version: ${{env.GRAALVM_JAVA}}
     - run: .\mvnw.cmd -B package -Dnative -DskipTests -D "cbi.jarsigner.skip=true"
     - run: mv org.eclipse.lemminx\target\lemminx-*.exe lemminx-win32.exe
-    - uses: actions/upload-artifact@v4
+    - name: Create Release
+      uses: ncipollo/release-action@v1.14.0
       with:
-        name: lemminx-win32
-        path: lemminx-win32.exe
-        if-no-files-found: error
+        prerelease: true
+        allowUpdates: true
+        omitBodyDuringUpdate: true
+        artifactErrorsFailBuild: true
+        tag: ${{ inputs.versionTag }}
+        name: ${{ inputs.versionTag }}
+        artifacts: "lemminx-win32.exe"
+        token: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    runs-on: ubuntu-latest
+    needs: ['build-binary-unix', 'build-binary-windows']
+    steps:
+    - name: Finalize Release
+      uses: ncipollo/release-action@v1.14.0
+      with:
+        prerelease: false
+        allowUpdates: true
+        omitBodyDuringUpdate: true
+        makeLatest: true
+        tag: ${{ inputs.versionTag }}
+        name: ${{ inputs.versionTag }}
+        token: ${{ secrets.GITHUB_TOKEN }}
