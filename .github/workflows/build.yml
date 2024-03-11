@@ -91,7 +91,7 @@ jobs:
     - name: Switch to XMLServerSocketLauncher
       run: |
         sed -i -e 's/org.eclipse.lemminx.XMLServerLauncher/org.eclipse.lemminx.XMLServerSocketLauncher/g' ./org.eclipse.lemminx/pom.xml
-        cat ./org.eclipse.lemminx/pom.xml
+        sed -i -e 's/0.0.0.0/127.0.0.1/g' ./org.eclipse.lemminx/src/main/java/org/eclipse/lemminx/XMLServerSocketLauncher.java
     - name: Cache Maven dependencies
       uses: actions/cache@v4
       with:
