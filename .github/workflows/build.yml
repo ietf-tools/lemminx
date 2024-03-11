@@ -88,6 +88,10 @@ jobs:
       with:
         repository: 'eclipse/lemminx'
         ref: ${{ inputs.versionTag }}
+    - name: Switch to XMLServerSocketLauncher
+      run: |
+        sed -i -e 's/org.eclipse.lemminx.XMLServerLauncher/org.eclipse.lemminx.XMLServerSocketLauncher/g' ./org.eclipse.lemminx/pom.xml
+        cat ./org.eclipse.lemminx/pom.xml
     - name: Cache Maven dependencies
       uses: actions/cache@v4
       with:
